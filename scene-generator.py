@@ -23,6 +23,8 @@ v = [
     [0, 1, 2, 3]
 ]
 
+p_wyn = []
+v_wyn = []
 
 def p_add(l, v):
     w = []
@@ -41,18 +43,19 @@ def v_add(v, n):
     return w
 
 
-p_wyn = []
-v_wyn = []
-ind = 0
-for x in range(0, N):
-    for y in range(0, N):
-        for z in range(0, N):
-            p_wyn = p_wyn + p_add(p, (br * x, br * y, br * z))
-            v_wyn = v_wyn + v_add(v, ind * 8)
-            ind += 1
+def gen_scene(ncubes):
+    global p_wyn, v_wyn
+    ind = 0
+    for x in range(0, ncubes):
+        for y in range(0, ncubes):
+            for z in range(0, ncubes):
+                p_wyn = p_wyn + p_add(p, (br * x, br * y, br * z))
+                v_wyn = v_wyn + v_add(v, ind * 8)
+                ind += 1
 
-f = open("model/out.ply", "w")
-print("""\
+def write_ply(fname):
+    f = open(fname, "w")
+    print("""\
 ply
 format ascii 1.0           { ascii/binary, format version number }
 comment made by Greg Turk  { comments keyword specified, like all lines }
@@ -65,11 +68,14 @@ element face %d             { there are 6 "face" elements in the file }
 property list uchar int vertex_index { "vertex_indices" is a list of ints }
 end_header                 { delimits the end of the header }\
 """ % (8 * N * N * N, 6 * N * N * N), file=f)
-for i in p_wyn:
-    print(i[0] - max_size, i[1] - max_size, i[2] - max_size, file=f)
-for i in v_wyn:
-    print(len(i), end=' ', file=f)
-    for j in i:
-        print(j, end=' ', file=f)
-    print(file=f)
-f.close()
+    for i in p_wyn:
+        print(i[0] - max_size, i[1] - max_size, i[2] - max_size, file=f)
+    for i in v_wyn:
+        print(len(i), end=' ', file=f)
+        for j in i:
+            print(j, end=' ', file=f)
+        print(file=f)
+    f.close()
+
+gen_scene(N)
+write_ply("model/out.ply")
