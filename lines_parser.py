@@ -1,6 +1,5 @@
-
 import struct
-
+import sys
 
 class Frame:
     def __init__(self, frame_number):
@@ -76,11 +75,16 @@ class Scene:
 
 
 if __name__ == '__main__':
-    p = Scene("lines4s.txt")
-    p.parse()
-    p.export("test4s.dat")
-    p.print_statistics()
+    program_name = sys.argv[0]
+    arguments = sys.argv[1:]
+    count = len(arguments)
 
-    # p = Scene("lines3.txt")
-    # p.parse()
-    # p.export("test3.dat")
+    if count == 1:
+        scene = Scene(arguments[0])
+        scene.parse()
+        scene.export(arguments[0] + ".dat")
+        scene.print_statistics()
+    else:
+        print("""
+        USAGE: %s <file_name>        
+        """ % program_name)
