@@ -1,3 +1,4 @@
+
 import struct
 
 
@@ -5,11 +6,16 @@ class Frame:
     def __init__(self, frame_number):
         self.frame_number = frame_number
         self.lines = []
+        self.stats = {}
         self.screen_width = 320
         self.screen_height = 256
 
     def add_line_coordinates(self, x1, y1, x2, y2):
         self.lines.append((x1, y1, x2, y2))
+
+        # update line statistics
+        line_weight = max(abs(x1 - x2), abs(y1 - y2))
+        self.stats[line_weight] = self.stats.get(line_weight, 0) + 1
 
     def add_line(self, data):
         (x1, y1, x2, y2) = map((lambda x: int(x)), data.split(','))
@@ -29,11 +35,15 @@ class Frame:
             result += struct.pack(">HHHH", x1, y1, x2, y2)
         return result
 
+    def get_stats(self):
+        return self.stats
 
-class Parser:
+
+class Scene:
     def __init__(self, file_name):
         self.file_name = file_name
         self.frames = []
+        self.stats = {}
 
     def parse(self):
         current_frame = None
@@ -47,6 +57,16 @@ class Parser:
                 elif element.startswith("line"):
                     current_frame.add_line(data)
 
+    def print_statistics(self):
+        total_lines = 0
+        for frame in self.frames:
+            for weight in frame.get_stats().keys():
+                self.stats[weight] = self.stats.get(weight, 0) + frame.stats[weight]
+                total_lines += frame.stats[weight]
+        for i in sorted(self.stats.items(), key=lambda kv: kv[1]):
+            print("%4d: %4d" % (i[0], i[1]))
+        print("TOTAL LINE: %4d" % total_lines)
+
     def export(self, export_file_name):
         with open(export_file_name, mode="wb") as f:
             f.write(struct.pack(">H", len(self.frames)))
@@ -54,7 +74,13 @@ class Parser:
                 bin_frame = frame.export_old()
                 f.write(bin_frame)
 
+
 if __name__ == '__main__':
-    p = Parser("lines.txt")
+    p = Scene("lines4s.txt")
     p.parse()
-    p.export("test.dat")
+    p.export("test4s.dat")
+    p.print_statistics()
+
+    # p = Scene("lines3.txt")
+    # p.parse()
+    # p.export("test3.dat")
