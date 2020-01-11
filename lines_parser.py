@@ -30,7 +30,8 @@ class Frame:
     def export_old(self):
         result = struct.pack('>H', len(self.lines))
         for (x1, y1, x2, y2) in self.lines:
-            address = int(y1 * self.screen_width / 2) + int(x1 / 16)
+            if x1>x2:
+                ((x1,y1),(x2,y2)) = ((x2,y2),(x1,y1))
             result += struct.pack(">BBBB", x1, y1, x2, y2)
         return result
 
