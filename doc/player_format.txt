@@ -1,0 +1,19 @@
+
+N.w # number of frames in animation
+
+L.w # number of line segments in the animation frame #0
+X.w Y.w
+X.w Y.w
+....
+
+L.w # number of line segments in the animation frame #1
+X.w Y.w
+X.w Y.w
+....
+
+[ .... ]
+
+L.w # number of line segments in the animation frame #N
+X.w Y.w
+X.w Y.w
+....
