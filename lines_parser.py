@@ -1,6 +1,14 @@
 import struct
 import sys
 
+
+def pack_partial_frame(lines):
+    result = struct.pack('>H', len(lines))
+    for (x1, y1, x2, y2) in lines:
+        result += struct.pack(">BBBB", x1, y1, x2, y2)
+    return result
+
+
 class Frame:
     def __init__(self, frame_number):
         self.frame_number = frame_number
@@ -20,19 +28,42 @@ class Frame:
         (x1, y1, x2, y2) = map((lambda x: int(x)), data.split(','))
         self.add_line_coordinates(x1, y1, x2, y2)
 
-    def export(self):
-        result = struct.pack('>H', len(self.lines))
+    def export_new(self, lines):
+        result = struct.pack('>H', len(lines))
         for (x1, y1, x2, y2) in self.lines:
             address = int(y1 * self.screen_width / 2) + int(x1 / 16)
             result += struct.pack(">HHhh", address, x1, x2 - x1, y2 - y1)
         return result
 
-    def export_old(self):
-        result = struct.pack('>H', len(self.lines))
+    def export(self):
+        result = b''
+        q0 = []
+        q1 = []
+        q2 = []
+        q3 = []
+
         for (x1, y1, x2, y2) in self.lines:
-            if y1<y2:
-                ((x1,y1),(x2,y2)) = ((x2,y2),(x1,y1))
-            result += struct.pack(">BBBB", x1, y1, x2, y2)
+            if y1 < y2:
+                ((x1, y1), (x2, y2)) = ((x2, y2), (x1, y1))
+
+            dx = abs(x2 - x1)
+            dy = abs(y2 - y1)
+            if x1 < x2:  # OCTANT 0 / 1
+                if dx > dy:
+                    q0.append((x1, y1 - y2, x2, y2))
+                else:
+                    q1.append((x1, y1 - y2, x2, y2))
+            else:  # OCTANT 2 / 3
+                if dx > dy:
+                    q2.append((x1, y1 - y2, x2, y2))
+                else:
+                    q3.append((x1, y1 - y2, x2, y2))
+
+        result += pack_partial_frame(q0)
+        result += pack_partial_frame(q1)
+        result += pack_partial_frame(q2)
+        result += pack_partial_frame(q3)
+
         return result
 
     def get_stats(self):
@@ -71,7 +102,7 @@ class Scene:
         with open(export_file_name, mode="wb") as f:
             f.write(struct.pack(">H", len(self.frames)))
             for frame in self.frames:
-                bin_frame = frame.export_old()
+                bin_frame = frame.export()
                 f.write(bin_frame)
 
 
