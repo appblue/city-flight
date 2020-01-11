@@ -123,6 +123,12 @@ func (v *Vertex) rotateZ(angle float64) {
 	v.Y = yy
 }
 
+func (v *Vertex) translate(X,Y,Z float64) {
+	v.X += X
+	v.Y += Y
+	v.Z += Z
+}
+
 func (v *Vertex) projection() {
 	z := v.Z - float64(winy) * 5.0 // 1000.0
 	d := float64(winy) // 200.0
@@ -326,34 +332,100 @@ func hiddenedges() {
 				}
 			}
 		}
+		AXX := vrtab[etab[i].V[0]].XX
+		AYY := vrtab[etab[i].V[0]].YY
+		BXX := vrtab[etab[i].V[1]].XX
+		BYY := vrtab[etab[i].V[1]].YY
+		minx := 2.0
+		miny := 2.0
+		maxx := float64(winx-3)
+		maxy := float64(winy-3)
+		if AXX < minx /* && BXX >= minx */{
+			if BXX < minx {
+				etab[i].Vis = nil
+			} else {
+				etab[i].removefragment(0.0,(minx-AXX)/(BXX-AXX))
+			}
+		}
+		if AYY < miny /* && BYY >= miny */{
+			if BYY < miny {
+				etab[i].Vis = nil
+			} else {
+				etab[i].removefragment(0.0,(miny-AYY)/(BYY-AYY))
+			}
+		}
+		if /* AXX >= minx && */ BXX < minx {
+			etab[i].removefragment((minx-AXX)/(BXX-AXX),1.0)
+		}
+		if /* AYY >= miny && */ BYY < miny {
+			etab[i].removefragment((miny-AYY)/(BYY-AYY),1.0)
+		}
+		if /* AXX <= maxx && */ BXX > maxx {
+			if AXX > maxx {
+				etab[i].Vis = nil
+			} else {
+				etab[i].removefragment((maxx-AXX)/(BXX-AXX),1.0)
+			}
+		}
+		if /* AYY <= maxy && */ BYY > maxy {
+			if AYY > maxy {
+				etab[i].Vis = nil
+			} else {
+				etab[i].removefragment((maxy-AYY)/(BYY-AYY),1.0)
+			}
+		}
+		if AXX > maxx /* && BXX <= maxx */ {
+			etab[i].removefragment(0.0,(maxx-AXX)/(BXX-AXX))
+		}
+		if AYY > maxy /* && BYY <= maxy */ {
+			etab[i].removefragment(0.0,(maxy-AYY)/(BYY-AYY))
+		}
 		// etab[i].removefragment(0.33,0.66)
 	}
 }
 
 var alpha,beta,gamma float64
+var frame int
+var frames = 300
+var zpos float64
+
+var minangle = 0.5 * (math.Pi / float64(frames))
 
 func nextframe() {
+
 	for i,v := range vtab {
 		v.rotateX(alpha)
 		v.rotateY(beta)
 		v.rotateZ(gamma)
+		v.translate(0.0,0.0,zpos)
 		v.projection()
 		vrtab[i] = v
 	}
 
-	alpha += 0.020943951023931952
-	beta += 0.041887902047863905
-	gamma += 0.06283185307179587
+	alpha += minangle // 0.020943951023931952
+	beta += minangle // 0.041887902047863905
+	gamma += minangle // 0.06283185307179587
+	frame++
+	if frame==frames {
+		alpha = 0.0
+		beta = 0.0
+		gamma = 0.0
+		frame = 0
+	}
+	if (zpos<400.0) {
+		zpos += 1.0
+	}
 //	alpha += 0.017
 //	beta += 0.021
 //	gamma += 0.037
 }
 
 func animate() {
+
 	c := canvas.NewCanvas(&canvas.CanvasConfig{
 		Width:     winx,
 		Height:    winy,
-		FrameRate: 30,
+		FrameRate: 50,
 		Title:     "Hello Canvas!",
 	})
 
@@ -391,6 +463,131 @@ func animate() {
 	})
 }
 
+var framebuffer [][]bool
+
+func fbcreate() {
+	framebuffer = make([][]bool,winy,winy)
+	for i:=0 ; i<winy ; i++ {
+		framebuffer[i] = make([]bool,winx,winx)
+	}
+}
+
+func fbclear() {
+	for y:=0 ; y<winy ; y++ {
+		for x:=0 ; x<winx ; x++ {
+			framebuffer[y][x] = false
+		}
+	}
+}
+
+func bresenham(x0,y0,x1,y1 int) {
+	var xx,xy,yx,yy int
+
+	dx := x1 - x0
+	dy := y1 - y0
+
+	xsign := -1
+	ysign := -1
+	if dx > 0 {
+		xsign = 1
+	} else {
+		dx = -dx
+	}
+	if dy > 0 {
+		ysign = 1
+	} else {
+		dy = -dy
+	}
+
+	if dx > dy {
+		xx = xsign
+		xy = 0
+		yx = 0
+		yy = ysign
+	} else {
+		dx, dy = dy, dx
+		xx = 0
+		xy = ysign
+		yx = xsign
+		yy = 0
+	}
+
+	D := 2*dy - dx
+	y := 0
+
+	for x:=0 ; x<dx+1 ; x++ {
+		xx := x0 + x*xx + y*yx
+		yy := y0 + x*xy + y*yy
+		framebuffer[yy][xx] = true
+		if D >= 0 {
+			y++
+			D -= 2*dx
+		}
+		D += 2*dy
+	}
+}
+
+var ghist [65536]int
+
+func fbanalyze() {
+	var hist [65536]int
+	for y:=0 ; y<winy ; y+=4 {
+		for x:=0 ; x<winx ; x+=4 {
+			mask := 1
+			variant := 0
+			for yy:=0 ; yy<4 ; yy++ {
+				for xx:=0 ; xx<4 ; xx++ {
+					if framebuffer[y+yy][x+xx] {
+						variant |= mask
+					}
+					mask <<= 1
+				}
+			}
+			hist[variant]++
+			ghist[variant]++
+		}
+	}
+	variants := 0
+	blocks := 0
+	for i:=0 ; i<65536 ; i++ {
+		if hist[i]>0 {
+			variants++
+			if i>0 {
+				blocks += hist[i]
+			}
+		}
+	}
+	fmt.Printf("Non empty blocks: %v ; shapes: %v\n",blocks,variants)
+}
+
+func analyze(count int) {
+	for i:=0 ; i<count ; i++ {
+		fbclear()
+		nextframe()
+		hiddenedges()
+		for _,e := range etab {
+			for _,f := range e.Vis {
+				fxs,fys := e.getpixel2d(f.S)
+				fxe,fye := e.getpixel2d(f.E)
+				xs := int(fxs)
+				ys := int(fys)
+				xe := int(fxe)
+				ye := int(fye)
+				bresenham(xs,ys,xe,ye)
+			}
+		}
+		fbanalyze()
+	}
+	variants := 0
+	for i:=0 ; i<65536 ; i++ {
+		if ghist[i]>0 {
+			variants++
+		}
+		fmt.Printf("v:%v c:%v\n",i,ghist[i])
+	}
+	fmt.Printf("Different variants: %v\n",variants)
+}
+
 func writedata(filename string,count int) {
 	file, err := os.Create(filename)
 	if err != nil {
@@ -403,25 +600,64 @@ func writedata(filename string,count int) {
 		nextframe()
 		hiddenedges()
 		l := 0
+		sl := 0
+		pixels := 0
 		for _,e := range etab {
 			for _,f := range e.Vis {
-				xs,ys := e.getpixel2d(f.S)
-				xe,ye := e.getpixel2d(f.E)
-				fmt.Fprintf(file,"Line: %v,%v,%v,%v\n",int(xs),int(ys),int(xe),int(ye))
+				fxs,fys := e.getpixel2d(f.S)
+				fxe,fye := e.getpixel2d(f.E)
+				xs := int(fxs)
+				ys := int(fys)
+				xe := int(fxe)
+				ye := int(fye)
+				dx := 0
+				dy := 0
+				pix := 0
+				if xs<xe {
+					dx = xe - xs
+				} else {
+					dx = xs - xe
+				}
+				if ys<ye {
+					dy = ye - ys
+				} else {
+					dy = ys - ye
+				}
+				if dx > dy {
+					pix = dx
+				} else {
+					pix = dy
+				}
+				pixels += pix
+				fmt.Fprintf(file,"Line: %v,%v,%v,%v\n",xs,ys,xe,ye)
 				l++
+				if pix<=3 {
+					sl++
+				}
 			}
 		}
-		fmt.Printf("Frame: %v ; lines: %v\n",i,l)
+		fmt.Printf("Frame: %v ; lines: %v (short:%v) ; pixels: %v\n",i,l,sl,pixels)
 	}
 	file.Close()
 }
 
 func main() {
-	if len(os.Args)>=3 {
+	boxes:=4
+	zpos = 450.0
+	if len(os.Args)==2 {
 		winx = 320
 		winy = 200
-		generate(4)
-		fmt.Printf("len(vtab):%v\n",len(vtab))
+		generate(boxes)
+		fbcreate()
+		count,err := strconv.Atoi(os.Args[1])
+		if err==nil {
+			analyze(count)
+		}
+	} else if len(os.Args)>=3 {
+		winx = 320
+		winy = 200
+		generate(boxes)
+//		fmt.Printf("len(vtab):%v\n",len(vtab))
 		count,err := strconv.Atoi(os.Args[2])
 		if err==nil {
 			writedata(os.Args[1],count)
@@ -429,7 +665,7 @@ func main() {
 	} else {
 		winx = 320
 		winy = 200
-		generate(4)
+		generate(boxes)
 		animate()
 	}
 }
