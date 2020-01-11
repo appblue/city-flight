@@ -51,7 +51,7 @@ func generate(n int) {
 	etab = make([]Edge,0,1000)
 	ptab = make([]Plane,0,1000)
 	s = 2.0 * float64(winy)/float64(n)
-	bs = s*0.8
+	bs = s*0.6
 	c = float64(n-1)*s/2.0
 
 	for i:=0 ; i<n ; i++ {
@@ -130,7 +130,7 @@ func (v *Vertex) projection() {
 	v.YY = v.Y*d/(z+d) + float64(winy)/2.0
 }
 
-func (e *Edge) getpixel(t float64) (float64,float64) {
+func (e *Edge) getpixel3d(t float64) (float64,float64) {
 	vs := vrtab[e.V[0]]
 	ve := vrtab[e.V[1]]
 	v := Vertex {
@@ -142,8 +142,91 @@ func (e *Edge) getpixel(t float64) (float64,float64) {
 	return v.XX,v.YY
 }
 
-func (p *Plane) setvis() {
+func (e *Edge) getpixel2d(t float64) (float64,float64) {
+	vs := vrtab[e.V[0]]
+	ve := vrtab[e.V[1]]
+	return vs.XX + (ve.XX - vs.XX) * t,vs.YY + (ve.YY - vs.YY) * t
+}
 
+func (e *Edge) removefragment(tmin,tmax float64) {
+	if tmin<0.0 {
+		tmin = 0.0
+	}
+	if tmax>1.0 {
+		tmax = 1.0
+	}
+	if e.Vis==nil || (tmin==0.0 && tmax==1.0) {
+		e.Vis = nil
+		return
+	} else {
+		frags := len(e.Vis)
+		if frags>0 {
+			if tmin <= e.Vis[0].S && tmax >= e.Vis[frags-1].E {
+				e.Vis = nil
+				return
+			}
+			firsttoremove:=frags
+			lasttoremove:=0
+			for i,_ := range e.Vis {
+				if e.Vis[i].S < tmin && e.Vis[i].E > tmax { // insert new
+					e.Vis = e.Vis[:frags+1] // increase len
+					for j:=frags ; j>i ; j-- {
+						e.Vis[j] = e.Vis[j-1]
+					}
+					e.Vis[i].E = tmin
+					e.Vis[i+1].S = tmax
+					return
+				}
+				if tmin <= e.Vis[i].S && tmax >= e.Vis[i].E {
+					if i<firsttoremove {
+						firsttoremove = i
+					}
+					if i>lasttoremove {
+						lasttoremove = i
+					}
+				}
+				if tmin > e.Vis[i].S && tmin < e.Vis[i].E {
+					e.Vis[i].E = tmin
+				}
+				if tmax > e.Vis[i].S && tmax < e.Vis[i].E {
+					e.Vis[i].S = tmax
+				}
+			}
+			fr := firsttoremove
+			ls := lasttoremove+1
+			if fr<=ls {
+				if fr==0 {
+					e.Vis = e.Vis[ls:]
+					return
+				}
+				if ls==frags {
+					e.Vis = e.Vis[:fr]
+					return
+				}
+				for j:=0 ; j<frags-ls ; j++ {
+					e.Vis[fr+j] = e.Vis[ls+j]
+				}
+				e.Vis = e.Vis[:frags-(ls-fr)]
+			}
+		}
+/*
+		frags := len(e.Vis)
+		vis := make([]Frag,frags+1)
+		for _,f := range e.Vis {
+			if f.E <= tmin || f.S >= tmax { // outside
+				vis = append(vis,f)
+			} else {
+				if f.S < tmin {
+					vis = append(vis,Frag{S:f.S,E:tmin})
+				}
+				if f.E > tmax {
+					vis = append(vis,Frag{S:tmax,E:f.E})
+				}
+			}
+		}
+		e.Vis = vis
+*/
+	}
 }
 
 func resetvis() {
@@ -193,6 +276,58 @@ func hiddenedges() {
 			}
 		}
 	}
+	for i,_ := range etab {
+		ezmid := ( vrtab[etab[i].V[0]].Z + vrtab[etab[i].V[1]].Z ) / 2.0
+		for _,p := range ptab {
+			if p.Vis {
+				pzmid := 0.0
+				for _,j := range p.E {
+					if i==j {
+						pzmid = -10000000.0
+						break
+					} else {
+						pzmid += vrtab[etab[j].V[0]].Z
+						pzmid += vrtab[etab[j].V[1]].Z
+					}
+				}
+				pzmid /= float64(len(p.E) * 2)
+				if pzmid > ezmid { // plane is in front of the edge
+					AXX := vrtab[etab[i].V[0]].XX
+					AYY := vrtab[etab[i].V[0]].YY
+					BXX := vrtab[etab[i].V[1]].XX
+					BYY := vrtab[etab[i].V[1]].YY
+//					edx = vrtab[etab[i].V[1]].XX - vrtab[etab[i].V[0]].XX
+//					edy = vrtab[etab[i].V[1]].YY - vrtab[etab[i].V[0]].YY
+					tmin := 1.0
+					tmax := 0.0
+					for _,j := range p.E {
+						CXX := vrtab[etab[j].V[0]].XX
+						CYY := vrtab[etab[j].V[0]].YY
+						DXX := vrtab[etab[j].V[1]].XX
+						DYY := vrtab[etab[j].V[1]].YY
+						delim := (BXX-AXX)*(DYY-CYY) - (BYY-AYY)*(DXX-CXX)
+						t1 := ((CXX-AXX)*(DYY-CYY) - (CYY-AYY)*(DXX-CXX)) / delim
+						t2 := ((CXX-AXX)*(BYY-AYY) - (CYY-AYY)*(BXX-AXX)) / delim
+						if t2 >= 0.0 && t2 <= 1.0 {
+							if t1 < tmin {
+								tmin = t1
+							}
+							if t1 > tmax {
+								tmax = t1
+							}
+						}
+//						pdx = vrtab[etab[j].V[1]].XX - vrtab[etab[j].V[0]].XX
+//						pdy = vrtab[etab[j].V[1]].YY - vrtab[etab[j].V[0]].YY
+
+					}
+					if tmin<tmax && tmax>0.0 && tmin<1.0 {
+						etab[i].removefragment(tmin,tmax)
+					}
+				}
+			}
+		}
+		// etab[i].removefragment(0.33,0.66)
+	}
 }
 
 var alpha,beta,gamma float64
@@ -234,8 +369,8 @@ func animate() {
 		hiddenedges()
 		for _,e := range etab {
 			for _,f := range e.Vis {
-				xs,ys := e.getpixel(f.S)
-				xe,ye := e.getpixel(f.E)
+				xs,ys := e.getpixel2d(f.S)
+				xe,ye := e.getpixel2d(f.E)
 				ctx.DrawLine(xs,ys,xe,ye)
 			}
 		}
@@ -263,13 +398,16 @@ func writedata(filename string,count int) {
 		fmt.Fprintf(file,"Frame: %v\n",i)
 		nextframe()
 		hiddenedges()
+		l := 0
 		for _,e := range etab {
 			for _,f := range e.Vis {
-				xs,ys := e.getpixel(f.S)
-				xe,ye := e.getpixel(f.E)
+				xs,ys := e.getpixel2d(f.S)
+				xe,ye := e.getpixel2d(f.E)
 				fmt.Fprintf(file,"Line: %v,%v,%v,%v\n",int(xs),int(ys),int(xe),int(ye))
+				l++
 			}
 		}
+		fmt.Printf("Frame: %v ; lines: %v\n",i,l)
 	}
 	file.Close()
 }
@@ -278,14 +416,16 @@ func main() {
 	if len(os.Args)>=3 {
 		winx = 320
 		winy = 200
-		generate(2)
+		generate(3)
 		fmt.Printf("len(vtab):%v\n",len(vtab))
 		count,err := strconv.Atoi(os.Args[2])
 		if err==nil {
 			writedata(os.Args[1],count)
 		}
 	} else {
-		generate(2)
+		winx = 320
+		winy = 200
+		generate(3)
 		animate()
 	}
 }
