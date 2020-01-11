@@ -31,7 +31,7 @@ class Frame:
         result = struct.pack('>H', len(self.lines))
         for (x1, y1, x2, y2) in self.lines:
             address = int(y1 * self.screen_width / 2) + int(x1 / 16)
-            result += struct.pack(">HHHH", x1, y1, x2, y2)
+            result += struct.pack(">hhhh", x1, y1, x2, y2)
         return result
 
     def get_stats(self):
