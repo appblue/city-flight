@@ -80,16 +80,11 @@ if __name__ == '__main__':
     count = len(arguments)
 
     if count == 1:
-        p = Scene(arguments[0])
-        p.parse()
-        p.export(arguments[0] + ".dat")
-        p.print_statistics()
+        scene = Scene(arguments[0])
+        scene.parse()
+        scene.export(arguments[0] + ".dat")
+        scene.print_statistics()
     else:
         print("""
-        USAGE: %s <file_name>
-        
+        USAGE: %s <file_name>        
         """ % program_name)
-
-    # p = Scene("lines3.txt")
-    # p.parse()
-    # p.export("test3.dat")
