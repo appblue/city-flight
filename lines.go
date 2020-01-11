@@ -50,7 +50,7 @@ func generate(n int) {
 	vrtab = make([]Vertex,1000)
 	etab = make([]Edge,0,1000)
 	ptab = make([]Plane,0,1000)
-	s = 2.0 * float64(winy)/float64(n)
+	s = 2.2 * float64(winy)/float64(n)
 	bs = s*0.6
 	c = float64(n-1)*s/2.0
 
@@ -340,9 +340,13 @@ func nextframe() {
 		v.projection()
 		vrtab[i] = v
 	}
-	alpha += 0.017
-	beta += 0.021
-	gamma += 0.037
+
+	alpha += 0.020943951023931952
+	beta += 0.041887902047863905
+	gamma += 0.06283185307179587
+//	alpha += 0.017
+//	beta += 0.021
+//	gamma += 0.037
 }
 
 func animate() {
@@ -416,7 +420,7 @@ func main() {
 	if len(os.Args)>=3 {
 		winx = 320
 		winy = 200
-		generate(3)
+		generate(4)
 		fmt.Printf("len(vtab):%v\n",len(vtab))
 		count,err := strconv.Atoi(os.Args[2])
 		if err==nil {
@@ -425,7 +429,7 @@ func main() {
 	} else {
 		winx = 320
 		winy = 200
-		generate(3)
+		generate(4)
 		animate()
 	}
 }
