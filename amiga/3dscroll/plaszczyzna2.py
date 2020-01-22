@@ -3,6 +3,9 @@ import math
 import random
 import struct
 
+STEP_FR=-2
+STEP_Y = 2
+
 yAddSizes = [24,23,23,22,22,21,21,20,20,20,19,19,18,18,18,17,17,17,17,16,16,16,16,15,15,15,15,14,14,14,14,14,13,13,13,13,13,13,12,12,12,12,12,12,12,11,11,11,11,11,11,11,11,10,10,10,10,10,10,10,10,10,10,9,0]
 
 Fonts = [		0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -134,7 +137,8 @@ def plot(pixels,x,y,cR=255):
     if cR<0: cR = 0
     if cR>=256: cR=255
     y1,y2 = tab_min_max[x]
-    if y>y1 and y<y2: return 0
+    if y>=y1 and y<=y2: return 0
+    cR=255
     pixels[x,y] = (cR,cR,cR)
     return 1
 
@@ -208,7 +212,7 @@ for x in range(0,256):
         tab_literki_xz[(x,z)] = 0
 
 def putNapis(nap,x,z,vec):
-    vec=-26
+    vec=-19
     for l_ind in range(0,len(nap)):
         letter = nap[l_ind]
         for i in range(0,8):
@@ -217,6 +221,15 @@ def putNapis(nap,x,z,vec):
                     tab_literki_xz[((x+i)+l_ind*8,z-j)]=vec
 #       01234567890123456789012345678901
 nap0 = "4096 3d sin-plane dots animated "
+nap1 = "EVERY FRAME!IN Y2015 DOT-RECORDS"
+nap2 = "won't be just broken. They will "
+nap3 = "be hammered&destroyed&killed :-)"
+nap4 = "Credits go to:Acid&DF0 for great"
+nap5 = "INSPIRATION FOR THIS DECEMBER'14"
+nap6 = "XMas EDITION PRODUCTION.And now-"
+nap7 = "@the and,we're AlL GoNnA bE DeAd"
+"""
+nap0 = "4096 3d sin-plane dots animated "
 nap1 = "EVERY*FRAME.IN Y2015 DOT-RECORDS"
 nap2 = "won't*be*just*broken.They*will*>"
 nap3 = "be*hammered&destroyed&killed*:-)"
@@ -224,7 +237,7 @@ nap4 = "Credits go to Acid&DF0 for great"
 nap5 = "INSPIRATION@FOR#THIS&DECEMBER'14"
 nap6 = "XMas*EDITION*PRODUCTION.And now*"
 nap7 = "@the and,we're gonna be all dead"
-
+"""
 
 putNapis(nap7,0,8*1-1,-20)
 putNapis(nap6,0,8*2-1,-20)
@@ -234,6 +247,35 @@ putNapis(nap3,0,8*5-1,-20)
 putNapis(nap2,0,8*6-1,-20)
 putNapis(nap1,0,8*7-1,-20)
 putNapis(nap0,0,8*8-1,-20)
+
+"""
+for z in range(0,LL_Z):
+    for x in range(0,256):
+        tab_literki_xz[x,z] -= 1*(abs(z-32)-32)
+"""
+
+def putNapisBig(nap):
+    vec=-30
+    for l_ind in range(0,len(nap)):
+        letter = nap[l_ind]
+        for i in range(0,8):
+            for j in range(0,8):
+                for (a,b) in [(a,b) for a in range(0,1) for b in range(0,8)]:
+                    if (1<<(7-i)) & Fonts[8*(ord(letter)-32)+j]:
+                        tab_literki_xz[(i*1+a+l_ind*8*1,63-j*8-b)]=vec
+
+#putNapisBig("A-M-IG-A"*4)
+
+
+f = open("c:\\users\\pejdys\\desktop\\harddrive\\sources\\1scp\\yy.data","rb")
+for z in range(0,LL_Z):
+    for x in range(0,LL_X):
+        a = ord(f.read(2)[0])
+        if (a): tab_literki_xz[128+(x)/2,63-z/2-16] = -20
+        else:   tab_literki_xz[128+(x)/2,63-z/2-16] = 0
+        if (a): tab_literki_xz[0+(x)/2,8+31-z/2] = 20
+        else:   tab_literki_xz[0+(x)/2,8+31-z/2] = 0
+f.close()
 
 yAddSizes = [-960,-920,-920,-880,-880,-840,-840,-800,-800,-800,-760,-760,-720,-720,-720,-680,-680,-680,-680,-640,-640,-640,-640,-600,-600,-600,-600,-560,-560,-560,-560,-560,-520,-520,-520,-520,-520,-520,-480,-480,-480,-480,-480,-480,-480,-440,-440,-440,-440,-440,-440,-440,-440,-400,-400,-400,-400,-400,-400,-400,-400,-400,-400,-360]
 
@@ -266,7 +308,7 @@ f.close()
 def onemore_frame(frame):
 #zwraca tablice [0..LL,0..LL]->(x,y,color)
     ret_tab = {}
-    sinInd = SIN_SIZE*(MAX_FR-1*frame)/MAX_FR %SIN_SIZE
+    sinInd = SIN_SIZE*(MAX_FR+(STEP_FR)*frame)/MAX_FR %SIN_SIZE
     print sinInd
     for z in range(0,LL_Z):
         (XP,YP) = tab_XPYP[z]           #rzutuj2d(0.5/LL*2-1,0.8,(z+0.5)/LL*2-1)
@@ -281,7 +323,7 @@ def onemore_frame(frame):
 #                print dy
             ret_tab[(x,z)] = (XX,YY,50+(LL_Z-z)*200/LL_Z) #plot(pixels,XX,YY,50+(LL-z)*200/LL)
             sinIndX+=1
-        sinInd +=2
+        sinInd +=(STEP_Y)
     return ret_tab
 
 def update_tab(tab_xz,frame):
@@ -294,6 +336,7 @@ def update_tab(tab_xz,frame):
 #            tab_xz[(x,z)] = (a,b+tab_literki_xz[((x+frame)%256,z)],c)
     return
 
+f = open("c:\\users\\pejdys\\desktop\\harddrive\\sources\\1scp\\zasl1.bin","wb")
 h = open("c:\\users\\pejdys\\desktop\\harddrive\\sources\\1scp\\zasl3.bin","wb")
 #                    0   1  2  3  4  5  6  7  8   9   10  11  12  13  14  15
 przes3o  = lambda x: [252,4,14,24,40,50,66,82,104,114,130,146,168,184,206,228][x]-4
@@ -311,33 +354,39 @@ for frame in range(0,MAX_FR):
     pixels = img.load() # create the pixel map
     draw = ImageDraw.Draw(img)
     font = ImageFont.truetype("cour.ttf", 10)
-    draw.text((10,sizeY-20), "dots:%d"%(LL_X*LL_Z), font=font)
+#    draw.text((10,sizeY-20), "dots:%d"%(LL_X*LL_Z), font=font)
     #draw.line((100,200, 150, 100))
     tab_xz = onemore_frame(frame)
     update_tab(tab_xz,frame)
     bmask = put_to_screen(pixels,draw,tab_xz)
     count=0
-    
+    num_c = {}
+    count00=0
+    countff=0
+    for i in range(0,16): num_c[i]=0
     for z in range(0,LL_Z):
         info=0
+        info8 = 0
         prev_val = 0
         for x in range(0,LL_X):
             info=info*2+bmask[z*LL_X+x]
+            info8 = info8*2+bmask[z*LL_X+x]
             if (x+1)%4==0:
+                if info8==0  : count00+=1
+                if info8==255: countff+=1
+                num_c[info]+=1
                 val = przes4(info)+(182+16)*(int(x/4))   #138 = rozmiar kodu bsetujacego po cztery bity
                 valZap = val - prev_val
                 prev_val = val
-#                if x==3:
-#                    valZap = przes4(3)
-#                else: valZap=198
                 h.write(chr(valZap/256)+chr(valZap%256))
                 info = 0
-                
-#            ss+=str(bmask[z*LL_X+x])
+            if (x+1)%8==0:
+                f.write(chr(info8))
+                info8 = 0
             count+=bmask[z*LL_X+x]
-#            col = bmask[z*LL_X+x]*200
-#            pixels[x,LL_Z-1-z] = (col,0,col)
-    draw.text((10,sizeY-10), "visible:%d"%(count), font=font)
+    draw.text((10,sizeY-10), "visible:%d/00:%d/ff:%d"%(count,count00,countff), font=font)
     draw.text((10+20*8,sizeY-10), "frame:%d"%(frame), font=font)
+    draw.text((0,sizeY-20), ("%2d,"*16)%(tuple([num_c[i] for i in range(0,16)])), font=font)
     img.save("C:\\users\\pejdys\\%03d.bmp"%frame,"BMP")
+f.close()
 h.close()
