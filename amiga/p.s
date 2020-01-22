@@ -7,6 +7,7 @@ planesize   = 40*256
 chip        = 2
 clear       = chip+$10000
 
+; BLITTER
 BLTCPTH     = $48 
 BLTDPTH     = $54
 BLTCMOD     = $60
