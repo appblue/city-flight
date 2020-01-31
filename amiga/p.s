@@ -24,7 +24,7 @@ BLTSIZE     = $58
 ;screen memory in low memory
 ;-----------------------------------
 screen1	    = $1000
-screen2     = screen1+$2800
+screen2     = screen1+planesize
 ;-----------------------------------
 start:	move.l	#begin,$80.w
 	trap	#0
@@ -58,17 +58,6 @@ begin:	lea	$dff000,a6
 	swap	d0
 	move.w	d0,pl1h
 	swap 	d0
-
-;	add.l	#40,d0	
-;	move.w	d0,pl2l
-;	swap	d0
-;	move.w	d0,pl2h
-;	swap 	d0
-;
-;	add.l	#40,d0	
-;	move.w	d0,pl3l
-;	swap	d0
-;	move.w	d0,pl3h
 
 	bsr	move_out
 
@@ -125,11 +114,12 @@ leave:
 	move.w	d0,$dff088
 	rte
 
-;*****main program*****
+;logic to handle screen in lowmem 
+;-----------------------------------
 move_out:
 	lea	$1000,a0
 	lea	movebuffer,a1
-	move.w	#2*$2800-1,d7
+	move.w	#(2*planesize)/4-1,d7
 .l01	move.l	(a0), (a1)+
 	clr.l	(a0)+
 	dbf	d7, .l01
@@ -138,11 +128,12 @@ move_out:
 move_in:
 	lea	$1000,a0
 	lea	movebuffer,a1
-	move.w	#2*$2800-1,d7
+	move.w	#(2*planesize)/4-1,d7
 .l01	move.l	(a1)+, (a0)+
 	dbf	d7, .l01
 	rts
 
+;-----------------------------------
 raster_wait:
 	move.l	4(a6),d0
 	and.l	#$1ff00,d0
@@ -150,26 +141,7 @@ raster_wait:
 	bne.s	raster_wait
 	rts
 
-;*****main program*****
-dr0:
-	neg.w	d0
-	rts
-
-;=================
-dr1:
-	neg.w	d0
-	exg	d1,d0
-	rts
-	
-;=================
-dr2:
-	rts
-
-;=================
-dr3:
-	exg	d1,d0
-	rts
-
+;-----------------------------------
 oneL:	macro
 	move.w	(a0)+,d6
 	move.w	d6,(a1)+
@@ -199,6 +171,18 @@ oneL:	macro
 .\@2:
 	endm
 
+dr0:	neg.w	d0
+	rts
+
+dr1:	neg.w	d0
+	exg	d1,d0
+	rts
+	
+dr2:	rts
+
+dr3:	exg	d1,d0
+	rts
+
 init:
 	move.w	#$0,$dff180
 	move.w	#$fff,$dff182
@@ -211,7 +195,7 @@ init:
 	add.w	d1,d0
 	dbf	d2,.l1
 
-	lea	anim_data_old,a0
+	lea	anim_data,a0
 	lea	anim_data_in,a1
 	move.w	(a0)+,d7	;frames
 	move.w	d7,(a1)+
@@ -237,12 +221,13 @@ wartosc3:	dc.l	0
 
 stack:		dc.l	0
 
-;constants
-; -----------------------------------------	
+; constants
+;-----------------------------------
 grname: dc.b "graphics.library",0
 	even
 
-;**************** nareszcie ***************
+; interrupt routine
+;-----------------------------------
 irq:	movem.l	d0-d7/a0-a6,-(sp)
 	andi.w	#$20,$dff01e
 	beq.w	out
@@ -259,8 +244,7 @@ out:	movem.l	(sp)+,d0-d7/a0-a6
 old:	dc.l 0
 delay:	dc.l 0
 
-cladr:
-	dc.w	$e0
+cladr:	dc.w	$e0
 pl1h:	dc.w	0,$e2
 pl1l:	dc.w	0,$e4
 pl2h:	dc.w	0,$e6
@@ -272,10 +256,10 @@ pl3l:	dc.w	0,$ec
 
 	dc.w	$ffff,$fffe
 
-;*************** pozostale dane ****************
-
 frame:	dc.w	0
-addr2:	dc.l	anim_data_in+2
+addr:	dc.l	anim_data_in+2
+
+buff:	blk.l	400,0
 
 oneOct:	macro
 
@@ -317,40 +301,38 @@ oneOct:	macro
 
 ; draw one animation frame
 ; -------------------------------
-show:
-	bsr	cls
+show:	bsr	cls
 
 	move.w	frame(pc),d6
 
 ; copy frames 100 & 200
-	move.l	#$27FF, d7
-	move.l	dispadr, a0
-	cmp.w	#100+1, d6
-	bne.s	.not100
-	lea	frame100, a1
-	bra.s	.copy_frame
-.not100:
-	cmp.w	#200+1, d6
-	bne.s	.not200
-	move.l	#frame200,a1
-.copy_frame:
-	move.b	(a0)+, (a1)+
-	dbra	d7, .copy_frame
-.not200:
+; ---------------------
+;	move.l	#$27FF, d7
+;	move.l	dispadr, a0
+;	cmp.w	#100+1, d6
+;	bne.s	.not100
+;	lea	frame100, a1
+;	bra.s	.copy_frame
+;.not100:
+;	cmp.w	#200+1, d6
+;	bne.s	.not200
+;	move.l	#frame200,a1
+;.copy_frame:
+;	move.b	(a0)+, (a1)+
+;	dbra	d7, .copy_frame
+;.not200:
 
 	addq.w	#1,d6
 	cmp.w	anim_data_in,d6
 	bne.s	.dal
-	move.l	#anim_data_in+2,addr2		;restart from frame #1
-;	move.l	nolin(pc),d0
-;	move.l	d0,nolin2
+	move.l	#anim_data_in+2,addr		;restart from frame #1
 	moveq	#0,d6
 .dal:
 	move.w	d6,frame
 
 	bsr	draw_init
 
-	move.l	addr2(pc),a0
+	move.l	addr(pc),a0
 	move.w	#$0801,a1
 
 	move.l	#$0bca0015,d6
@@ -362,16 +344,13 @@ show:
 	move.l	#$0bca0001,d6
 	oneOct
 
-	move.l	a0,(addr2)
-
-;	move.w	#$011, $dff180
+	move.l	a0,(addr)
 
 	rts
 
 ; swap screens
 ; -------------------------------
-swap:
-	move.l	dispadr,d0
+swap:	move.l	dispadr,d0
 	move.l	drawadr,dispadr
 	move.l	d0,drawadr
 	move.l	dispadr,d0
@@ -380,8 +359,6 @@ swap:
 	move.w	d0,pl1h
 	swap 	d0
 	rts
-
-buff:	blk.l	400,0
 
 ; wait for blitter
 ; -------------------------------
@@ -436,11 +413,12 @@ draw_init:
 
 anim_data_in:
 	blk.b	230000
-anim_data_old:
+anim_data:
 	incbin	'data/line4big256.txt.dat'
 
 movebuffer:
-	blk.b	2*$2800,0
+	blk.b	2*planesize,0
+	
 frame100:
 	blk.b	$2800,0
 frame200:
