@@ -26,6 +26,8 @@ BLTSIZE     = $58
 screen1	    = $1000
 screen2     = $4000
 
+frame100    = screen2+$2800
+frame200    = screen2+2*$2800
 ;-----------------------------------
 start:	move.l	#begin,$80.w
 	trap	#0
@@ -40,8 +42,8 @@ begin:	lea	$dff000,a6
 	ori.w	#$8000,wartosc2
 	ori.w	#$8000,wartosc3
 
-    bsr     raster_wait
-    bsr     raster_wait
+	bsr     raster_wait
+	bsr     raster_wait
 
 	move.w	#$7fff,$9a(a6)
 	move.w	#$7fff,$96(a6)
@@ -102,9 +104,8 @@ leave:
 	move.w	#$7fff,$96(a6)
 	move.w	#$7fff,$9c(a6)
 
-    bsr     raster_wait
-    bsr     raster_wait
-
+	bsr     raster_wait
+	bsr     raster_wait
 	bsr	move_in
 
 	move.l	stack(pc),a7
@@ -219,7 +220,6 @@ init:
 	move.w	d7,(a1)+
 	subq.w	#1,d7
 .AL:
-
 	oneL	dr0
 	oneL	dr1
 	oneL	dr2
@@ -250,11 +250,6 @@ irq:	movem.l	d0-d7/a0-a6,-(sp)
 	andi.w	#$20,$dff01e
 	beq.w	out
 	move.w	#$20,$dff09c
-
-; do not display on every frame
-;	addq	#1, delay
-;	and.w	#$3f, delay
-;	bne.s	out
 
 	bsr.w	show
 	bsr	swap
@@ -292,16 +287,17 @@ oneOct:	macro
 	blt.s	\@3
 
 \@1:	movem.w	(a0)+,d0-d3
-	add.w	a3,d3			;potencjalnie mozna od razu to dodawac przy konwersji
+	add.w	a3,d3	; potencjalnie mozna od razu 
+			; to dodawac przy konwersji
 
 	ror.l	#4,d2
-	or.l	d6,d2	;magia d4
-			;d1 = 2 x sdelta, d0 = 2 x ldelta
+	or.l	d6,d2	; magia d4
+			; d1 = 2 x sdelta, d0 = 2 x ldelta
 
 	move.w	d1,d4
 
 	move.w	d0,d5
-	add.w	a1,d5	;#$0801
+	add.w	a1,d5	; #$0801
 	rol.w	#6,d5
 	sub.w	d0,d4
 	bge.s	\@2
@@ -328,6 +324,23 @@ show:
 	bsr	cls
 
 	move.w	frame(pc),d6
+
+; copy frames 100 & 200
+	move.l	#$27FF, d7
+	move.l	dispadr, a0
+	cmp.w	#100+1, d6
+	bne.s	.not100
+	lea	frame100, a1
+	bra.s	.copy_frame
+.not100:
+	cmp.w	#200+1, d6
+	bne.s	.not200
+	move.l	#frame200,a1
+.copy_frame:
+	move.b	(a0)+, (a1)+
+	dbra	d7, .copy_frame
+.not200:
+
 	addq.w	#1,d6
 	cmp.w	anim_data_in,d6
 	bne.s	.dal
@@ -413,48 +426,9 @@ draw_init:
 	addq.l	#2,a6
 	rts
 
-
-
-
-; draw a line
-;--------------------------------
-;  d0,d1   : x,y line start
-;  d2,d3   : x,y line end
-;  a4      : buffer with line addresses
-;  a3      : drawadr
-;--------------------------------
-
-drawN:
-	move.l	a3,d5
-
-	moveq	#15,d4
-
-	and.w	d2,d4
-;	sub.w	d3,d1			;opt
-	add.w	d3,d3
-	add.w	(a4,d3.w),d5
-	sub.w	d2,d0
-	blt.s	.tron
-	cmp.w	d0,d1
-	bge.s	.prince
-	moveq	#$11,d7
-	bra.s	.speedy
-.prince:
-	moveq	#1,d7
-	exg	d1,d0
-	bra.s	.speedy
-.tron:	neg.w	d0
-	cmp.w	d0,d1
-	bge.s	.only
-	moveq	#$15,d7
-	bra.s	.speedy
-.only:	moveq	#$9,d7
-	exg	d1,d0
-.speedy:
-;	rrrr
-
 ; FORMAT
 ;
+; 
 ; ADDR.W - adres pierwszej linii
 ; DX.B
 ; DY.B
