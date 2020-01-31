@@ -190,7 +190,7 @@ init:
 	lea	buff(pc),a0
 	moveq	#0,d0
 	move.w	#40,d1
-	move.l	#256,d2
+	move.l	#$FF,d2
 .l1:	move.w	d0,(a0)+
 	add.w	d1,d0
 	dbf	d2,.l1
@@ -258,8 +258,7 @@ pl3l:	dc.w	0,$ec
 
 frame:	dc.w	0
 addr:	dc.l	anim_data_in+2
-
-buff:	blk.l	400,0
+buff:	blk.l	$FF,0
 
 oneOct:	macro
 
