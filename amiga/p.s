@@ -24,10 +24,7 @@ BLTSIZE     = $58
 ;screen memory in low memory
 ;-----------------------------------
 screen1	    = $1000
-screen2     = $4000
-
-frame100    = screen2+$2800
-frame200    = screen2+2*$2800
+screen2     = screen1+$2800
 ;-----------------------------------
 start:	move.l	#begin,$80.w
 	trap	#0
@@ -132,7 +129,7 @@ leave:
 move_out:
 	lea	$1000,a0
 	lea	movebuffer,a1
-	move.w	#$4000,d7
+	move.w	#2*$2800-1,d7
 .l01	move.l	(a0), (a1)+
 	clr.l	(a0)+
 	dbf	d7, .l01
@@ -141,7 +138,7 @@ move_out:
 move_in:
 	lea	$1000,a0
 	lea	movebuffer,a1
-	move.w	#$4000,d7
+	move.w	#2*$2800-1,d7
 .l01	move.l	(a1)+, (a0)+
 	dbf	d7, .l01
 	rts
@@ -443,8 +440,11 @@ anim_data_old:
 	incbin	'data/line4big256.txt.dat'
 
 movebuffer:
-	blk.b	65536,0
-
+	blk.b	2*$2800,0
+frame100:
+	blk.b	$2800,0
+frame200:
+	blk.b	$2800,0
 
 ;d0-x1
 ;d1-y1
