@@ -28,7 +28,7 @@ INTENASET	= %1100000000100000
 ;	f: IO Ports/Timers
 ;	g: Software Int
 
-DMASET		= %1000001111100000
+DMASET		= %1000001111000000
 ;		   a----bcdefghi--j
 ;	a: SET/CLR Bit
 ;	b: Blitter Priority
@@ -87,6 +87,8 @@ START	movem.l	d0-a6,-(a7)
 	move.l	$6c(a0),.OldVBI-.VARS_HW(a5)
 	lea	.NewVBI(pc),a1
 	move.l	a1,$6c(a0)
+
+	bsr	SETUP
 
 	move.w	#INTENASET!$C000,$9A(a6)	; set Interrupts+ BIT 14/15
 	move.w	#DMASET!$8200,$96(a6)		; set DMA	+ BIT 09/15
@@ -159,7 +161,6 @@ START	movem.l	d0-a6,-(a7)
 *******************************************
 *** VERTICAL BLANK (VBI)		***
 *******************************************
-
 .NewVBI	movem.l	d0-a6,-(a7)
 	move.l	VBIptr(pc),d0
 	beq.b	.noVBI
